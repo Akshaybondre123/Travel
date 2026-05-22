@@ -55,33 +55,19 @@ export default function SharedItinerary() {
         </nav>
       </div>
 
-      <div className="container animate-fade-in" style={{ paddingTop: '3rem', paddingBottom: '4rem' }}>
-        <div 
-          style={{ 
-            background: 'rgba(16, 185, 129, 0.06)', 
-            border: '1px solid rgba(16, 185, 129, 0.15)',
-            padding: '0.75rem 1.25rem',
-            borderRadius: '10px',
-            color: 'var(--accent)',
-            fontWeight: 600,
-            fontSize: '0.9rem',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginBottom: '1.5rem'
-          }}
-        >
+      <div className="container shared-page animate-fade-in">
+        <div className="shared-badge">
           <span>👋</span> Shared by {itinerary.user?.name || 'a fellow traveler'}
         </div>
 
-        <header className="page-header" style={{ marginBottom: '2.5rem' }}>
-          <h1 style={{ fontSize: '2.5rem' }}>{itinerary.title}</h1>
-          <p style={{ fontSize: '1.1rem', marginTop: '0.5rem', color: 'var(--muted)' }}>
-            📍 {itinerary.destination} · Day-by-Day travel schedule
+        <header className="page-header shared-header">
+          <h1>{itinerary.title}</h1>
+          <p>
+            📍 {itinerary.destination} · Day-by-day travel schedule
           </p>
         </header>
 
-        <div className="grid-2" style={{ gridTemplateColumns: '1.3fr 0.7fr', alignItems: 'start' }}>
+        <div className="grid-2 shared-layout">
           <div className="card">
             <ItineraryView itinerary={itinerary} />
           </div>

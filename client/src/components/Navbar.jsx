@@ -7,7 +7,7 @@ export default function Navbar() {
 
   return (
     <header className="navbar">
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+      <div className="container navbar-inner">
         <Link to="/" className="logo">
           ✈️ Trip<span>Forge</span>
         </Link>
@@ -15,10 +15,8 @@ export default function Navbar() {
           <span className="nav-avatar" title={user?.name}>
             {initial}
           </span>
-          <span style={{ color: 'var(--muted)', fontSize: '0.88rem', fontWeight: 500 }}>
-            {user?.name}
-          </span>
-          <button type="button" className="btn btn-ghost" onClick={logout}>
+          <span className="nav-name">{user?.name}</span>
+          <button type="button" className="btn btn-ghost btn-signout" onClick={logout}>
             Sign out
           </button>
         </div>
