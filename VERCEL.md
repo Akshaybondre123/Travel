@@ -38,7 +38,7 @@ Travel/
 
 | Name | Example |
 |------|---------|
-| `VITE_API_URL` | `https://your-api.vercel.app/api` |
+| `VITE_API_URL` | `https://travel-forge11.vercel.app/api` |
 
 ---
 
