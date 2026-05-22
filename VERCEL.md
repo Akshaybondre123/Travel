@@ -50,7 +50,7 @@ Travel/
 | **Framework** | Other |
 | **Install Command** | `npm install` |
 | **Build Command** | `npm run build` *(runs in `server/` only — NOT `--prefix client`)* |
-| **Output Directory** | *(leave completely empty / disabled — never `client/dist`)* |
+| **Output Directory** | `public` *(minimal static folder — not `client/dist` or `dist`)* |
 
 **Do not use** on the backend project (this causes `server/client/package.json` error):
 
