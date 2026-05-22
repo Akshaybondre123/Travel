@@ -4,13 +4,21 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { s3Client, s3Bucket, s3Enabled } from '../config/s3.js';
+import { isServerless, useS3Storage, assertUploadConfig } from '../config/runtime.js';
+
+assertUploadConfig();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const localDir = path.join(__dirname, '../../uploads');
+const localDir = path.join(process.cwd(), 'uploads');
 
-fs.mkdirSync(localDir, { recursive: true });
-
-const useLocal = process.env.USE_LOCAL_STORAGE === 'true' || !s3Enabled;
+function ensureLocalDir() {
+  if (isServerless) return;
+  try {
+    fs.mkdirSync(localDir, { recursive: true });
+  } catch (err) {
+    if (err.code !== 'EEXIST') console.warn('Could not create uploads dir:', err.message);
+  }
+}
 
 const allowed = new Set([
   'application/pdf',
@@ -27,8 +35,12 @@ function fileFilter(_req, file, cb) {
 }
 
 function localStorage() {
+  ensureLocalDir();
   return multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, localDir),
+    destination: (_req, _file, cb) => {
+      ensureLocalDir();
+      cb(null, localDir);
+    },
     filename: (_req, file, cb) => {
       const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
       cb(null, `${unique}${path.extname(file.originalname)}`);
@@ -36,18 +48,28 @@ function localStorage() {
   });
 }
 
+function resolveStorage() {
+  if (s3Enabled && s3Client) {
+    return multerS3({
+      s3: s3Client,
+      bucket: s3Bucket,
+      contentType: multerS3.AUTO_CONTENT_TYPE,
+      key: (_req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        cb(null, `bookings/${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+      },
+    });
+  }
+
+  if (isServerless) {
+    throw new Error('S3 storage is required on Vercel. Configure AWS environment variables.');
+  }
+
+  return localStorage();
+}
+
 export const upload = multer({
-  storage: !useLocal
-    ? multerS3({
-        s3: s3Client,
-        bucket: s3Bucket,
-        contentType: multerS3.AUTO_CONTENT_TYPE,
-        key: (_req, file, cb) => {
-          const ext = path.extname(file.originalname);
-          cb(null, `bookings/${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
-        },
-      })
-    : localStorage(),
+  storage: resolveStorage(),
   fileFilter,
   limits: { fileSize: 10 * 1024 * 1024 },
 });

@@ -3,7 +3,13 @@ import fs from 'fs/promises';
 import path from 'path';
 import { s3Client, s3Enabled } from '../config/s3.js';
 
-export async function getFileBuffer({ mimeType, fileUrl, localPath, storageKey }) {
+async function streamToBuffer(body) {
+  const chunks = [];
+  for await (const chunk of body) chunks.push(chunk);
+  return Buffer.concat(chunks);
+}
+
+export async function getFileBuffer({ fileUrl, localPath, storageKey }) {
   if (localPath) {
     return fs.readFile(localPath);
   }
@@ -15,14 +21,16 @@ export async function getFileBuffer({ mimeType, fileUrl, localPath, storageKey }
         Key: storageKey,
       })
     );
-    const chunks = [];
-    for await (const chunk of res.Body) chunks.push(chunk);
-    return Buffer.concat(chunks);
+    return streamToBuffer(res.Body);
   }
 
   if (fileUrl?.startsWith('http')) {
     const res = await fetch(fileUrl);
-    if (!res.ok) throw new Error('Failed to fetch file from storage');
+    if (!res.ok) {
+      throw new Error(
+        'Failed to fetch file from storage. Use S3 credentials or enable public bucket access.'
+      );
+    }
     return Buffer.from(await res.arrayBuffer());
   }
 

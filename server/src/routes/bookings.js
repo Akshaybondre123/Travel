@@ -1,13 +1,11 @@
 import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import Booking from '../models/Booking.js';
 import { protect } from '../middleware/auth.js';
 import { upload, getFileUrl, getStorageKey } from '../middleware/upload.js';
 import { extractFromDocument } from '../services/gemini.js';
+import { isServerless } from '../config/runtime.js';
 
 const router = express.Router();
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 router.use(protect);
 
@@ -22,44 +20,65 @@ router.post('/upload', upload.single('document'), async (req, res) => {
 
     const fileUrl = getFileUrl(req.file);
     const localPath = req.file.path || null;
+    const storageKey = getStorageKey(req.file);
 
     const booking = await Booking.create({
       user: req.user._id,
       originalName: req.file.originalname,
       mimeType: req.file.mimetype,
       fileUrl,
-      storageKey: getStorageKey(req.file),
+      storageKey,
       status: 'processing',
     });
 
-    res.status(201).json(booking);
+    if (isServerless) {
+      await processBooking(booking);
+      const updated = await Booking.findById(booking._id);
+      return res.status(201).json(updated);
+    }
 
-    processBooking(booking._id, {
-      mimeType: req.file.mimetype,
-      fileUrl,
-      localPath,
-      storageKey: booking.storageKey,
-    }).catch(console.error);
+    res.status(201).json(booking);
+    processBooking(booking).catch(console.error);
   } catch (err) {
     res.status(500).json({ message: err.message || 'Upload failed' });
   }
 });
 
-async function processBooking(bookingId, fileMeta) {
+async function processBooking(booking) {
   try {
-    const extracted = await extractFromDocument(fileMeta);
-    await Booking.findByIdAndUpdate(bookingId, {
+    const extracted = await extractFromDocument({
+      mimeType: booking.mimeType,
+      fileUrl: booking.fileUrl,
+      storageKey: booking.storageKey,
+    });
+    await Booking.findByIdAndUpdate(booking._id, {
       extractedData: extracted,
       documentType: extracted.documentType || 'other',
       status: 'extracted',
+      errorMessage: undefined,
     });
   } catch (err) {
-    await Booking.findByIdAndUpdate(bookingId, {
+    await Booking.findByIdAndUpdate(booking._id, {
       status: 'failed',
       errorMessage: err.message,
     });
   }
 }
+
+router.post('/:id/retry', async (req, res) => {
+  const booking = await Booking.findOne({ _id: req.params.id, user: req.user._id });
+  if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+  await Booking.findByIdAndUpdate(booking._id, { status: 'processing', errorMessage: undefined });
+  if (isServerless) {
+    await processBooking(booking);
+    const updated = await Booking.findById(booking._id);
+    return res.json(updated);
+  }
+
+  res.json({ message: 'Reprocessing started' });
+  processBooking(booking).catch(console.error);
+});
 
 router.get('/:id', async (req, res) => {
   const booking = await Booking.findOne({ _id: req.params.id, user: req.user._id });

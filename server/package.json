@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "setup:s3": "node scripts/setup-s3.js"
+    "vercel-build": "echo \"No build step\""
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.700.0",

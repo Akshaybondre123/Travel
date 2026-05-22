@@ -4,6 +4,21 @@ import api from '../api';
 import Navbar from '../components/Navbar';
 import FileUpload from '../components/FileUpload';
 
+const DOC_ICONS = {
+  flight: '✈️',
+  hotel: '🏨',
+  train: '🚆',
+  bus: '🚌',
+  other: '📄',
+};
+
+function statusLabel(status) {
+  if (status === 'extracted') return 'Ready';
+  if (status === 'processing') return 'Analyzing';
+  if (status === 'failed') return 'Failed';
+  return 'Uploaded';
+}
+
 export default function Dashboard() {
   const [bookings, setBookings] = useState([]);
   const [itineraries, setItineraries] = useState([]);
@@ -12,12 +27,16 @@ export default function Dashboard() {
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    const [bRes, iRes] = await Promise.all([
-      api.get('/bookings'),
-      api.get('/itineraries'),
-    ]);
-    setBookings(bRes.data);
-    setItineraries(iRes.data);
+    try {
+      const [bRes, iRes] = await Promise.all([
+        api.get('/bookings'),
+        api.get('/itineraries'),
+      ]);
+      setBookings(bRes.data || []);
+      setItineraries(iRes.data || []);
+    } catch (err) {
+      console.error('Failed to load dashboard:', err);
+    }
   }, []);
 
   useEffect(() => {
@@ -30,6 +49,17 @@ export default function Dashboard() {
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
+  };
+
+  const handleRetry = async (id, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await api.post(`/bookings/${id}/retry`);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Retry failed');
+    }
   };
 
   const handleGenerate = async () => {
@@ -48,92 +78,198 @@ export default function Dashboard() {
   };
 
   const extracted = bookings.filter((b) => b.status === 'extracted');
-  const canGenerate = selected.length > 0 && selected.every((id) =>
-    extracted.some((b) => b._id === id)
-  );
+  const canGenerate =
+    selected.length > 0 &&
+    selected.every((id) => extracted.some((b) => b._id === id));
 
   return (
     <div className="app-shell">
-      <div className="container">
-        <Navbar />
-        <header className="page-header">
-          <h1>Your trips</h1>
-          <p>Upload travel documents, extract booking details with AI, and generate day-by-day itineraries.</p>
-        </header>
+      <Navbar />
 
-        <div className="grid-2" style={{ marginBottom: '2rem' }}>
-          <section className="card">
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Upload booking</h2>
+      <section className="hero-banner">
+        <div className="container hero-inner">
+          <div className="hero-text">
+            <span className="hero-eyebrow">AI travel planner</span>
+            <h1>Plan your trip abroad in minutes</h1>
+            <p>
+              Upload flight tickets, hotel confirmations, or train passes — we extract the details
+              and build a day-by-day itinerary you can share with anyone.
+            </p>
+          </div>
+          <div className="hero-stats">
+            <div className="stat-pill">
+              <strong>{bookings.length}</strong>
+              <span>Documents</span>
+            </div>
+            <div className="stat-pill">
+              <strong>{extracted.length}</strong>
+              <span>Ready</span>
+            </div>
+            <div className="stat-pill">
+              <strong>{itineraries.length}</strong>
+              <span>Itineraries</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="container dashboard-body">
+        <div className="steps-strip">
+          <div className="step active">
+            <span className="step-num">1</span>
+            <div>
+              <strong>Upload</strong>
+              <small>PDF or image</small>
+            </div>
+          </div>
+          <div className={`step ${extracted.length ? 'active' : ''}`}>
+            <span className="step-num">2</span>
+            <div>
+              <strong>Extract</strong>
+              <small>AI reads bookings</small>
+            </div>
+          </div>
+          <div className={`step ${itineraries.length ? 'active' : ''}`}>
+            <span className="step-num">3</span>
+            <div>
+              <strong>Generate</strong>
+              <small>Share itinerary</small>
+            </div>
+          </div>
+        </div>
+
+        <div className="dashboard-grid">
+          <section className="card card-elevated">
+            <div className="card-head">
+              <h2>Upload booking</h2>
+              <p>Flights · Hotels · Trains · Bus passes</p>
+            </div>
             <FileUpload onUploaded={() => load()} />
           </section>
 
-          <section className="card">
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Generate itinerary</h2>
-            <p style={{ color: 'var(--muted)', marginBottom: '1rem', fontSize: '0.95rem' }}>
-              Select processed bookings below, then generate a unified AI itinerary.
-            </p>
+          <section className="card card-elevated card-accent">
+            <div className="card-head">
+              <h2>Build itinerary</h2>
+              <p>Select processed documents, then generate your trip plan</p>
+            </div>
             {error && <p className="error-msg">{error}</p>}
             <button
               type="button"
-              className="btn btn-primary"
+              className="btn btn-primary btn-lg"
               disabled={!canGenerate || generating}
               onClick={handleGenerate}
             >
-              {generating ? 'Generating with Gemini…' : `Generate from ${selected.length || 0} booking(s)`}
+              {generating ? 'Creating your trip plan…' : `Generate itinerary (${selected.length} selected)`}
             </button>
+            <p className="card-hint">
+              {extracted.length === 0
+                ? 'Upload a document and wait until status shows Ready.'
+                : `${extracted.length} document(s) ready for planning.`}
+            </p>
           </section>
         </div>
 
-        <section className="card" style={{ marginBottom: '2rem' }}>
-          <h2 style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Uploaded bookings</h2>
-          {bookings.length === 0 ? (
-            <div className="empty-state">No documents yet. Upload a flight or hotel confirmation to start.</div>
-          ) : (
-            bookings.map((b) => (
-              <label key={b._id} className="booking-item">
-                <input
-                  type="checkbox"
-                  checked={selected.includes(b._id)}
-                  disabled={b.status !== 'extracted'}
-                  onChange={() => toggleSelect(b._id)}
-                />
-                <div className="booking-meta">
-                  <h4>{b.originalName}</h4>
-                  <small>
-                    {b.documentType} ·{' '}
-                    {b.extractedData?.destination || b.extractedData?.origin || 'Processing…'}
-                  </small>
-                  {b.status === 'extracted' && b.extractedData?.confirmationNumber && (
-                    <div style={{ fontSize: '0.85rem', color: 'var(--muted)', marginTop: '0.25rem' }}>
-                      Ref: {b.extractedData.confirmationNumber}
-                    </div>
-                  )}
-                  {b.status === 'failed' && (
-                    <div style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>{b.errorMessage}</div>
-                  )}
-                </div>
-                <span className={`badge badge-${b.status}`}>{b.status}</span>
-              </label>
-            ))
-          )}
-        </section>
+        <div className="dashboard-split">
+          <section className="card">
+            <div className="card-head row-between">
+              <div>
+                <h2>Your bookings</h2>
+                <p>Tickets and confirmations you uploaded</p>
+              </div>
+            </div>
 
-        <section className="card">
-          <h2 style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Itinerary history</h2>
-          {itineraries.length === 0 ? (
-            <div className="empty-state">Generated itineraries will appear here.</div>
-          ) : (
-            itineraries.map((it) => (
-              <Link key={it._id} to={`/itinerary/${it._id}`} className="itinerary-card">
-                <h3>{it.title}</h3>
-                <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
-                  {it.destination || 'Trip'} · {new Date(it.createdAt).toLocaleDateString()}
-                </p>
-              </Link>
-            ))
-          )}
-        </section>
+            {bookings.length === 0 ? (
+              <div className="empty-state">
+                <span className="empty-icon">🧳</span>
+                <h3>No bookings yet</h3>
+                <p>Drop a flight e-ticket or hotel voucher to get started.</p>
+              </div>
+            ) : (
+              <ul className="booking-list">
+                {bookings.map((b) => (
+                  <li key={b._id} className={`booking-row ${selected.includes(b._id) ? 'selected' : ''}`}>
+                    <label className="booking-row-inner">
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(b._id)}
+                        disabled={b.status !== 'extracted'}
+                        onChange={() => toggleSelect(b._id)}
+                      />
+                      <span className="booking-icon">{DOC_ICONS[b.documentType] || DOC_ICONS.other}</span>
+                      <div className="booking-info">
+                        <h4>{b.originalName}</h4>
+                        <p>
+                          {b.documentType} ·{' '}
+                          {b.extractedData?.destination ||
+                            b.extractedData?.origin ||
+                            (b.status === 'processing' ? 'Analyzing with AI…' : '—')}
+                        </p>
+                        {b.extractedData?.confirmationNumber && (
+                          <span className="booking-ref">Ref: {b.extractedData.confirmationNumber}</span>
+                        )}
+                        {b.status === 'failed' && (
+                          <div className="booking-error">
+                            <span>{b.errorMessage}</span>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={(e) => handleRetry(b._id, e)}
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <span className={`badge badge-${b.status}`}>
+                        {b.status === 'processing' && <span className="pulse-dot" />}
+                        {statusLabel(b.status)}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="card">
+            <div className="card-head">
+              <h2>Trip history</h2>
+              <p>Previously generated itineraries</p>
+            </div>
+
+            {itineraries.length === 0 ? (
+              <div className="empty-state compact">
+                <span className="empty-icon">🗺️</span>
+                <h3>No trips yet</h3>
+                <p>Your AI itineraries will appear here.</p>
+              </div>
+            ) : (
+              <div className="itinerary-grid">
+                {itineraries.map((it) => (
+                  <Link key={it._id} to={`/itinerary/${it._id}`} className="trip-card">
+                    <div className="trip-card-bg" />
+                    <div className="trip-card-body">
+                      <h3>{it.title}</h3>
+                      <p>{it.destination || 'Destination TBD'}</p>
+                      <div className="trip-card-footer">
+                        <span>View plan →</span>
+                        <time>{new Date(it.createdAt).toLocaleDateString()}</time>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       </div>
+
+      <footer className="app-footer">
+        <p>
+          TripForge — inspired by global travel platforms. Secure uploads · AI-powered planning ·
+          One-click sharing.
+        </p>
+      </footer>
     </div>
   );
 }

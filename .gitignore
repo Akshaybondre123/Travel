@@ -7,3 +7,9 @@ build/
 .DS_Store
 uploads/
 coverage/
+
+# Recovery / temp scripts (do not commit)
+client/*.cjs
+client/raw_view.txt
+client/search.txt
+client/index_recover.json

@@ -1,26 +1,6 @@
 import mongoose from 'mongoose';
 import { nanoid } from 'nanoid';
 
-const activitySchema = new mongoose.Schema(
-  {
-    time: { type: String, default: '' },
-    title: { type: String, default: '' },
-    description: { type: String, default: '' },
-    location: { type: String, default: '' },
-    type: { type: String, default: 'other' },
-  },
-  { _id: false }
-);
-
-const daySchema = new mongoose.Schema(
-  {
-    date: { type: String, default: '' },
-    title: { type: String, default: '' },
-    activities: { type: [activitySchema], default: [] },
-  },
-  { _id: false }
-);
-
 const itinerarySchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -30,9 +10,24 @@ const itinerarySchema = new mongoose.Schema(
     endDate: { type: Date },
     bookings: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Booking' }],
     summary: { type: String },
-    days: { type: [daySchema], default: [] },
+    days: [
+      {
+        date: String,
+        title: String,
+        activities: [
+          {
+            time: String,
+            title: String,
+            description: String,
+            location: String,
+            type: { type: String },
+          },
+        ],
+      },
+    ],
     tips: [String],
     rawContent: { type: mongoose.Schema.Types.Mixed },
+    isFallback: { type: Boolean, default: false },
     shareId: { type: String, unique: true, default: () => nanoid(12) },
     isPublic: { type: Boolean, default: true },
   },

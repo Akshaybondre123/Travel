@@ -3,36 +3,8 @@ import Itinerary from '../models/Itinerary.js';
 import Booking from '../models/Booking.js';
 import { protect } from '../middleware/auth.js';
 import { generateItinerary } from '../services/gemini.js';
-import { fallbackItinerary } from '../services/fallbackAi.js';
 
 const router = express.Router();
-
-function normalizeDays(days) {
-  if (!Array.isArray(days)) return [];
-  return days.map((day) => {
-    let activities = day.activities;
-    if (typeof activities === 'string') {
-      try {
-        activities = JSON.parse(activities.replace(/'/g, '"'));
-      } catch {
-        activities = [];
-      }
-    }
-    if (!Array.isArray(activities)) activities = [];
-
-    return {
-      date: String(day.date || ''),
-      title: String(day.title || ''),
-      activities: activities.map((a) => ({
-        time: String(a?.time || ''),
-        title: String(a?.title || ''),
-        description: String(a?.description || ''),
-        location: String(a?.location || ''),
-        type: String(a?.type || 'other'),
-      })),
-    };
-  });
-}
 
 router.get('/share/:shareId', async (req, res) => {
   const itinerary = await Itinerary.findOne({
@@ -81,11 +53,6 @@ router.post('/generate', async (req, res) => {
     }
 
     const ai = await generateItinerary(bookings);
-    let days = normalizeDays(ai.days);
-    const valid =
-      days.length > 0 &&
-      days.every((d) => d.activities.length > 0 && d.activities.every((a) => a.title));
-    if (!valid) days = normalizeDays(fallbackItinerary(bookings).days);
 
     const itinerary = await Itinerary.create({
       user: req.user._id,
@@ -94,9 +61,10 @@ router.post('/generate', async (req, res) => {
       startDate: ai.startDate ? new Date(ai.startDate) : undefined,
       endDate: ai.endDate ? new Date(ai.endDate) : undefined,
       summary: ai.summary,
-      days,
+      days: ai.days || [],
       tips: ai.tips || [],
       rawContent: ai,
+      isFallback: ai.isFallback === true,
       bookings: bookings.map((b) => b._id),
     });
 

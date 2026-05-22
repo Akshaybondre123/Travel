@@ -126,17 +126,9 @@ Travel/
 - [ ] Live deployed backend + frontend URLs
 - [ ] Demo: register → upload PDF/image → wait for extraction → generate itinerary → share link
 
-## Testing with sample data
-
-Upload `samples/sample-flight-booking.txt` from the dashboard to test extraction and itinerary generation without a real PDF.
-
-If Gemini quota is exceeded, the server automatically falls back to a rule-based parser so the demo still works.
-
 ## Security Note
 
 Never commit API keys or AWS credentials. Rotate any keys that were shared in chat or email.
-
-See [DEPLOY.md](./DEPLOY.md) for Render + Vercel deployment steps.
 
 ## License
 

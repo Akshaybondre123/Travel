@@ -8,13 +8,27 @@ import SharedItinerary from './pages/SharedItinerary';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="loading-screen">Loading…</div>;
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="spinner"></div>
+        <div className="loading-text">TripForge</div>
+      </div>
+    );
+  }
   return user ? children : <Navigate to="/login" replace />;
 }
 
 function PublicOnly({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="loading-screen">Loading…</div>;
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="spinner"></div>
+        <div className="loading-text">TripForge</div>
+      </div>
+    );
+  }
   return user ? <Navigate to="/" replace /> : children;
 }
 
