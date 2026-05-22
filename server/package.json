@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "build": "node -e \"console.log('API serverless — no static build')\""
   },
   "engines": {
     "node": ">=18"

@@ -49,14 +49,16 @@ Travel/
 | **Root Directory** | `server` |
 | **Framework** | Other |
 | **Install Command** | `npm install` |
-| **Build Command** | *(leave empty)* |
-| **Output Directory** | *(leave empty — never `client/dist`)* |
+| **Build Command** | `npm run build` *(runs in `server/` only — NOT `--prefix client`)* |
+| **Output Directory** | *(leave completely empty / disabled — never `client/dist`)* |
 
-**Do not use** on this project:
+**Do not use** on the backend project (this causes `server/client/package.json` error):
 
-- `npm run build --prefix client`
-- `client/dist`
-- `npm install --prefix client`
+- `npm run build --prefix client` ❌
+- `client/dist` ❌
+- `npm install --prefix client` ❌
+
+If the dashboard still shows frontend commands, **clear them manually** and save, then redeploy.
 
 **Environment variables** (from `server/.env.example`):
 
