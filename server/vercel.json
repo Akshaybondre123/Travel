@@ -1,6 +1,6 @@
 {
+  "framework": null,
   "installCommand": "npm install",
-  "buildCommand": "echo \"API-only — no static build\"",
   "rewrites": [
     {
       "source": "/(.*)",
