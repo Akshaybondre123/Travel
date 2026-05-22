@@ -1,5 +1,4 @@
 {
-  "$comment": "Use when Vercel Root Directory is set to client",
   "installCommand": "npm install",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
